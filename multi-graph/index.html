@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style> 
+  body { font: 12px Arial;}
+  path { 
+    stroke: steelblue;
+    stroke-width: 2;
+    fill: none;
+  }
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: grey;
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+  }
+  .graph {
+    border: 1px solid black;
+  }
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+// 1. Read the jsonIndex - how many files do we have?
+// 2. Create svg tags for each data file
+// 2.1. add identifiers so that iteration of the 
+// function creating the graph can target specific svg
+// 3. Add graphs to svg tags
+
+// 1. Read the jsonIndex file
+
+// Set the dimensions of the canvas / graph
+var margin = {top: 30, right: 20, bottom: 30, left: 50},
+  width = 600 - margin.left - margin.right,
+  height = 270 - margin.top - margin.bottom;
+
+jsonFiles = d3.csv("jsonIndex.log", function(files){
+  var fileCount = files.length;
+
+  // info: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...in
+  for (var object in files) {
+    // console.log(files[object]["file"]); // output: data1.json, data2.json, data3.json
+    // console.log(object); // output: 0,1,2,3
+
+    var svg = d3.select("body")
+      .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .attr("id", "svg" + object)
+        .attr("class", "graph")
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    
+    drawGraph("#svg" + object, files[object]["file"]);
+  }
+});
+
+function drawGraph(selector, file){
+
+    d3.json(file, function(error, json) {
+      if (error) return console.warn(error);
+
+      // Graph Data
+      var g = new Array();
+      var keys = d3.keys(json['intervals']);
+      keys.forEach(function(key) {
+        var bps = parseInt(json['intervals'][key]['sum']['bits_per_second']) / 1000000;
+        mbps = bps.toFixed(1);
+        mbps = +mbps;
+        var second = parseInt(key) + 1;
+        var r = {};
+        r["second"] = second;
+        r["mbps"] = mbps;
+        g[key] = r;
+      });
+      
+      // Meta Data
+      // Timestamp
+      ts = "time " + json["start"]["timestamp"]["time"];
+      
+      // Server
+      server = "server " + json["start"]["connected"][0]["remote_host"];
+      
+      // Client 
+      client = "client " + json["start"]["connected"][0]["local_host"];
+      
+      // Network Speed Direction
+      if (json["start"]["test_start"]["reverse"] == 1) {
+        direction = server + " uploads to " + client;
+      } else {
+        direction = client + " uploads to " + server;
+      }
+      
+      // Set the ranges
+      var x = d3.scale.linear().range([0,width]);
+      var y = d3.scale.linear().range([height, 0]);
+
+      // Define the axes
+      var xAxis = d3.svg.axis().scale(x)
+        .orient("bottom").ticks(10);
+
+      var yAxis = d3.svg.axis().scale(y)
+        .orient("left").ticks(10);
+
+      // Define the line
+      var valueline = d3.svg.line()
+        .x(function(d) { return x(d.second); })
+        .y(function(d) { return y(d.mbps); });
+
+      // Adds the svg canvas
+      var svg = d3.select(selector)
+        // .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // Scale the range of the data
+      x.domain(d3.extent(g, function(d) { return d.second; }));
+      y.domain([0, d3.max(g, function(d) { return d.mbps; })]);
+
+      // Add the valueline path.
+      svg.append("path")
+        .attr("class", "line")
+        .attr("d", valueline(g));
+
+      // Add the X Axis
+      svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+        .append("text")
+          .attr("fill", "#000")
+          .attr("x", 450)
+          .attr("y", 20)
+          .attr("dy", "0.71em")
+          .attr("text-anchor", "start")
+          .text("1 second intervals");
+
+      // Add the Y Axis
+      svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+        .append("text")
+          .attr("fill", "#000")
+          // .attr("transform", "rotate(-90)")
+          .attr("y", -15)
+          .attr("x", -25)
+          .attr("dy", "0.71em")
+          .attr("text-anchor", "start")
+          .text("Mbps: " + direction + " @ " + ts);
+
+    });
+}
+
+</script>
+</body>

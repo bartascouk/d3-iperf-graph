@@ -51,6 +51,22 @@ var svg = d3.select("body")
 d3.json("data.json", function(error, json) {
   if (error) return console.warn(error);
   
+  // Meta Data
+  // Timestamp
+  ts = " " + json["start"]["timestamp"]["time"];
+    // Server
+  server = "server " + json["start"]["connected"][0]["remote_host"];
+    // Client 
+  client = "client " + json["start"]["connected"][0]["local_host"];
+  
+  // Network Speed Direction
+  if (json["start"]["test_start"]["reverse"] == 1) {
+    direction = server + " uploads to " + client;
+  } else {
+    direction = client + " uploads to " + server;
+  }
+
+
   var g = new Array();
   var keys = d3.keys(json['intervals']);
   keys.forEach(function(key) {
@@ -77,12 +93,26 @@ d3.json("data.json", function(error, json) {
 	svg.append("g")
 	  .attr("class", "x axis")
 	  .attr("transform", "translate(0," + height + ")")
-	  .call(xAxis);
+	  .call(xAxis)
+    .append("text")
+      .attr("fill", "#000")
+      .attr("x", 450)
+      .attr("y", 20)
+      .attr("dy", "0.71em")
+      .attr("text-anchor", "start")
+      .text("1 second intervals");
 
 	// Add the Y Axis
 	svg.append("g")
 	  .attr("class", "y axis")
-	  .call(yAxis);
+	  .call(yAxis)
+    .append("text")
+      .attr("fill", "#000")
+      .attr("y", -15)
+      .attr("x", -25)
+      .attr("dy", "0.71em")
+      .attr("text-anchor", "start")
+      .text("Mbps: " + direction + " @ " + ts);
 
 });
 
